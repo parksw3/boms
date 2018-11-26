@@ -1,74 +1,70 @@
-## these will be model arguments?
+library(rstan)
+library(tsiR)
 
-model = list(
-	S ~ - beta*S*I/N,
-	I ~ beta*S*I/N - gamma*I
+london <- twentymeas$London[1:100,]
+
+SI_model <- make_model(
+	name = "SI",
+    model = list(
+        S ~ mu * (N-S) - (c0+c1*(1+cos(2*3.141592*t)))*S*I/N,
+        E ~ (c0+c1*(1+cos(2*3.141592*t)))*S*I/N - (mu + sigma) * E,
+        I ~ sigma * E - (mu + gamma)*I
+    ),
+    observation = list(
+        cases ~ neg_binomial_2(I, phi)
+    ),
+    initial = list(
+        S ~ N * s0,
+        E ~ N * e0,
+        I ~ N * i0
+    ),
+    par= c("c0", "c1", "mu", "sigma", "gamma", "phi", "N", "s0", "e0", "i0")
 )
 
-observation = list(
-	susceptible ~ dnorm(mean=S, sd=sigma1),
-	infected ~ dnorm(mean=I, sd=sigma2)
+sm <- make_stancode(SI_model,
+					fixed=c("mu", "sigma", "gamma", "N"),
+					link=c(s0="logit", e0="logit", i0="logit"))
+
+mm <- stan_model(model_code=sm)
+
+standata <- list(
+	n_obs=nrow(london),
+	n_params=10,
+	n_state=3,
+	t0=min(london$time)-1/26,
+	ts=london$time,
+	mu=1/50,
+	sigma=35.6,
+	gamma=33,
+	N=london$pop[1],
+	cases=london$cases
 )
 
-initial = list(
-	S ~ N * (1 - i0),
-	I ~ N * i0
-)
+oo <- optimizing(mm, data=standata, as_vector=FALSE,
+				 init=list(
+				 	log_c0=log(300), log_c1=log(100), log_phi=5,
+				 	logit_s0=qlogis(0.04), logit_e0=qlogis(1e-7), logit_i0=qlogis(1e-6))
+				 )
 
-par = c("beta", "gamma", "N", "i0", "sigma1", "sigma2")
+oo$value
 
-tvar = "t"
-
-## code starts here
-
-## actual names
-state <- sapply(model, function(x) deparse(x[[2]]))
-
-## substitute names
-tstate <- paste0("y[", 1:length(state),"]")
-
-## substitute 
-
-tpar <- paste0("params[", 1:length(par), "]")
-
-tfun <- function(a, b) {
-	fixed <- c(as.symbol("~"), parse(text=a))
-	as.formula(as.call(c(fixed, parse(text=b))))
-}
-
-state_transforms <- mapply(tfun, a=state, b=tstate, SIMPLIFY=FALSE)
-
-state_transforms2 <- trans(state_transforms, state)
-
-param_transforms <- mapply(tfun, a=par, b=tpar, SIMPLIFY=FALSE)
-
-param_transforms2 <- trans(param_transforms, par)
+plot(london$cases)
+lines(oo$par$y_hat[,3], type="l")
 
 
+ss <- sampling(mm, data=standata, 
+			   chains=1,
+			   init=list(list(
+			   	log_c0=log(20), log_c1=log(3), log_phi=1,
+			   	logit_s0=qlogis(0.04), logit_e0=qlogis(1e-10), logit_i0=qlogis(1e-7))))
+ 
+traceplot(ss, pars=c("beta", "gamma", "i0"))
 
-gtextlist <- list()
+ext <- extract(ss)
 
-for (i in 1:length(model)) {
-	s1 <- subst(model[[i]][[3]], state_transforms2)
-	s2 <- subst(s1, param_transforms2)
-	
-	gtextlist[[i]] <- paste0("dydt[", i, "] = ", deparse(s2), "; \n")
-}
+plot(standata$infected)
 
-scode_functions <- paste0(
-	"// generated with fitode2", "\n",
-	"functions { \n",
-	"real[] gfun(real t, \n",
-	"real[] y, \n",
-	"real[] params, \n",
-	"real[] x_r, \n",
-	"real[] x_i, { \n\n",
-	"real dydt[", length(model), "]; \n\n",
-	do.call(paste0, gtextlist), "\n\n",
-	"return dydt;\n\n}\n\n}"
-)
-
-cat(scode_functions)
-
+lines(apply(ext$y_hat[,,2], 2, mean))
+matlines(t(apply(ext$y_hat[,,2], 2, quantile, c(0.025, 0.975))), col=1, lty=2)
 
 
