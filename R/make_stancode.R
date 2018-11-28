@@ -62,14 +62,17 @@ make_stancode <- function(model,
 						  link,
 						  fixed,
 						  solver=c("rk45", "bdf")) {
-	if (class(fixed) != "character")
-		stop("`fixed` must be a character string")
-	
 	solver <- match.arg(solver)
 	
 	par <- model@par
 
 	observation <- model@observation
+	
+	if (!missing(link)) {
+		link <- link[names(link) %in% par]
+		
+		if (any(is.na(match(names(link), par)))) stop("Some link functions do not correspond to the model parameters.")
+	}
 	
 	if (!missing(fixed)) {
 		which_fix <- match(fixed, par)
@@ -77,7 +80,6 @@ make_stancode <- function(model,
 	} else {
 		which_est <- 1:length(par)
 	}
-	
 	
 	if (!missing(link)) {
 		link <- link[names(link) %in% par]
@@ -114,6 +116,7 @@ make_stancode <- function(model,
 		ftextlist <- as.list(paste0("real ", par[which_fix], "; \n"))
 	} else {
 		ftextlist <- list()
+		fixed <- character(0)
 	}
 	
 	ptextlist <- as.list(paste0("params[", 1:length(par), "] = ", par, "; \n"))
