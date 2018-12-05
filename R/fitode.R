@@ -9,7 +9,7 @@
 ##' @param link named vector or list of link functions for ode/log-likelihood parameters
 ##' @param debug print debugging output?
 ##' @param ... rstan arguments
-##' @import rstan
+##' @importFrom rstan stan_model optimizing sampling
 ##' @seealso \code{\link{mle2}}
 ##' @export fitode
 fitode <- function(model, data,
@@ -66,7 +66,7 @@ fitode <- function(model, data,
     
     message("Compiling the C++ model")
     
-    mm <- stan_model(model_code=stancode@stancode)
+    mm <- rstan::stan_model(model_code=stancode@stancode)
     
     message("Fitting the Stan model")
     

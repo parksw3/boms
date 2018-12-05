@@ -28,9 +28,11 @@ init <- c(
 
 ff <- fitode(SI_model, 
 			 harbin, 
+			 method="sampling",
 			 tcol="week", 
 			 init=init,
 			 link=c(i0="logit"))
+
 
 
 

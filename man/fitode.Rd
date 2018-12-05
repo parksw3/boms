@@ -18,21 +18,11 @@ fitode(model, data, init, tcol = "times", t0, method = c("optimizing",
 
 \item{tcol}{time column}
 
-\item{method}{optimization method}
+\item{method}{fit method}
 
 \item{link}{named vector or list of link functions for ode/log-likelihood parameters}
 
-\item{...}{mle2 arguments}
-
-\item{optimizer}{optimizer}
-
-\item{control}{see optim}
-
-\item{solver.opts}{options for ode integration. See ode}
-
-\item{skip.hessian}{skip hessian calculation}
-
-\item{use.ginv}{use generalized inverse (\code{\link{ginv}}) to compute approximate vcov}
+\item{...}{rstan arguments}
 
 \item{debug}{print debugging output?}
 }
