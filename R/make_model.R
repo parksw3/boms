@@ -17,7 +17,7 @@ set_link <- function(link, modelpar, data) {
 }
 
 ##' Apply link functions to parameters
-##'
+##' 
 ##' @param par vector of parameter values
 ##' @param linklist list containing \code{linkfun}, \code{linkinv}, and \code{mu.eta} for each link
 ##' @param type string specifying which function should be applied

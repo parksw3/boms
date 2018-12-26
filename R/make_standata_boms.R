@@ -1,4 +1,4 @@
-arrange_t0 <- function(x) {
+arrange_t0_internal <- function(x) {
 	x <- x[order(x$t),]
 	tmp <- rep(NA, nrow(x))
 	for (i in 1:nrow(x)) {
@@ -14,17 +14,49 @@ arrange_t0 <- function(x) {
 	x
 }
 
+arrange_t0 <- function(data, allvars=NULL) {
+	data$order <- 1:nrow(data)
+	if (length(data$t0) == 0) {
+		dt <- diff(data$t)
+		data$t0 <- min(data$t) - min(dt[dt > 0])
+	}
+	
+	if (length(allvars) > 0) {
+		data <- do.call("rbind", lapply(split(data, data[allvars]), function(x){
+			if (nrow(x) == 1) {
+				x$which_t0 <- x$order
+			} else if (nrow(x) > 1) {
+				x <- arrange_t0_internal(x)
+			}
+			x
+		}))
+	} else {
+		data <- arrange_t0_internal(data)
+	}
+	
+	data <- data[order(data$order),]
+	rownames(data) <- NULL
+	
+	data
+}
+
 ##' @export
 make_standata_boms <- function(model,
 							   effect,
 							   prior,
+							   data,
+							   sample_prior = c("no", "yes", "only"),
 							   ...) {
-	dots <- list(...)
-	
 	tcol <- model$tcol
 	
-	bdata <- as.data.frame(model$data)
+	if (missing(data)) {
+		bdata <- model$data
+	} else {
+		bdata <- data
+	}
+	
 	bdata$t <- bdata[[tcol]]
+	bdata <- bdata[order(bdata$t),]
 	dt <- diff(bdata$t)
 	## temporary
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
@@ -34,9 +66,8 @@ make_standata_boms <- function(model,
 	
 	bf_arg <- c(oformula, effect, nl=TRUE)
 	
-	bformula <- do.call(bf, bf_arg)
-	
-	formula <- brms:::validate_formula(bformula, data = data, family = model$family)
+	formula <- do.call(bf, bf_arg)
+	formula$family <- model$family
 	
 	bterms <- parse_bf(formula)
 
@@ -45,31 +76,16 @@ make_standata_boms <- function(model,
 		do.call(brms::prior, arg)
 	}))
 	
-	sample_prior <- brms:::check_sample_prior("no")
+	sample_prior <- match.arg(sample_prior)
 	prior <- brms:::check_prior(bprior, formula = formula, data = bdata, 
 								sample_prior = sample_prior, warn = TRUE)
 	
 	bdata <- brms:::update_data(bdata, bterms = bterms)
-	bdata$order <- 1:nrow(bdata)
 	
 	allvars <- all.vars(bterms$allvars)
 	allvars <- allvars[!allvars %in% c(deparse(model$observation[[2]]), "t", "t0")]
 	
-	if (length(allvars) > 0) {
-		bdata <- do.call("rbind", lapply(split(bdata, bdata[allvars]), function(x){
-			if (nrow(x) == 1) {
-				x$which_t0 <- x$order
-			} else if (nrow(x) > 1) {
-				x <- arrange_t0(x)
-			}
-			x
-		}))
-	} else {
-		bdata <- arrange_t0(bdata)
-	}
-	
-	rownames(bdata) <- NULL
-	bdata <- bdata[order(bdata$order),]
+	bdata <- arrange_t0(bdata, allvars)
 	
 	out <- c(
 		list(N = nrow(bdata)), 

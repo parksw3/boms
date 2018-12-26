@@ -4,14 +4,19 @@
 make_stancode_boms <- function(model,
 							   effect,
 							   prior,
+							   data,
+							   sample_prior = c("no", "yes", "only"),
 							   ...) {
-	dots <- list(...)
-	# silent <- as_one_logical(silent)
-	
 	tcol <- model$tcol
 	
-	bdata <- as.data.frame(model$data)
+	if (missing(data)) {
+		bdata <- model$data
+	} else {
+		bdata <- data
+	}
+	
 	bdata$t <- bdata[[tcol]]
+	bdata <- bdata[order(bdata$t),]
 	dt <- diff(bdata$t)
 	## TODO: fix this
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
@@ -21,9 +26,8 @@ make_stancode_boms <- function(model,
 	
 	bf_arg <- c(oformula, effect, nl=TRUE)
 	
-	bformula <- do.call(bf, bf_arg)
-	
-	formula <- brms:::validate_formula(bformula, data = data, family = model$family)
+	formula <- do.call(bf, bf_arg)
+	formula$family <- model$family
 	
 	bterms <- parse_bf(formula)
 
@@ -32,8 +36,9 @@ make_stancode_boms <- function(model,
 		do.call(brms::prior, arg)
 	}))
 	
-	sample_prior <- brms:::check_sample_prior("no")
-	prior <- brms:::check_prior(bprior, formula = formula, data = bdata, 
+	## TODO allow for other options in sample_prior
+	sample_prior <- match.arg(sample_prior)
+	prior <- check_prior(bprior, formula = formula, data = bdata, 
 						 sample_prior = sample_prior, warn = TRUE)
 	
 	bdata <- brms:::update_data(bdata, bterms = bterms)
