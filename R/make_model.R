@@ -73,6 +73,14 @@ make_model <- function(grad,
 	
 	solver <- match.arg(solver)
 	
+	if (is.character(family)) {
+		family <- do.call(brmsfamily, list(family=family, link="identity"))
+	} else if ("brmsfamily" %in% class(family)) {
+		faily <- family ## TODO: redundant; get rid of this or do more checks if necessary
+	} else {
+		## TODO
+	}
+	
 	state <- sapply(grad, function(x) deparse(x[[2]]))
 	nstate <- length(state)
 	

@@ -1,4 +1,5 @@
 ##' @import brms
+##' @importFrom brms bf parse_bf prior
 ##' @export
 make_stancode_boms <- function(model,
 							   effect,
@@ -9,7 +10,7 @@ make_stancode_boms <- function(model,
 	
 	tcol <- model$tcol
 	
-	bdata <- model$data
+	bdata <- as.data.frame(model$data)
 	bdata$t <- bdata[[tcol]]
 	dt <- diff(bdata$t)
 	## TODO: fix this
@@ -38,7 +39,7 @@ make_stancode_boms <- function(model,
 	bdata <- brms:::update_data(bdata, bterms = bterms)
 
 	ranef <- brms:::tidy_ranef(bterms, data = bdata)
-	meef <- brms:::tidy_meef(bterms, data = data)
+	meef <- brms:::tidy_meef(bterms, data = bdata)
 	
 	scode_predictor <- brms:::stan_predictor(bterms, data = bdata, prior = prior, 
 									  ranef = ranef, meef = meef, sparse = FALSE, stanvars = NULL)
@@ -61,6 +62,7 @@ make_stancode_boms <- function(model,
 	scode_data <- paste0(
 		"data { \n", "  int<lower=1> N;  // total number of observations \n", 
 		scode_predictor$data, scode_ranef$data, scode_Xme$data, 
+		"  int which_t0[N]; \n",
 		"  int prior_only;  // should the likelihood be ignored? \n", 
 		"} \n"
 	)
@@ -112,7 +114,11 @@ make_stancode_boms <- function(model,
 		scode_predictor$modelC2, 
 		scode_predictor$modelC3, 
 		paste(etextlist, collapse=""), ## rep_array(0.1, 0) actually doesn't do anything inside ifun
-		gsub(")", ", rep_array(0.1, 0))", gsub("tmpfun", "ifun", gsub("y_hat", "y0", yhat_frame))),
+		"    if (which_t0[n]==n) {\n",
+		gsub(")", ", rep_array(0.1, 0))", gsub("tmpfun", "ifun", gsub("y_hat", "  y0", yhat_frame))),
+		"    } else {\n",
+		"      y0[n,] = y_hat[which_t0[n],];\n",
+		"    }\n",
 		gsub(")", ", y0[n,], x_r, x_i)", gsub("tmpfun", "simfun", yhat_frame)),
 		gsub(")", ", y0[n,], y_hat[n,])", gsub("tmpfun", "mufun", gsub("y_hat\\[n,]", "mu[n]", yhat_frame)))
 	)
@@ -155,11 +161,11 @@ make_stancode_boms <- function(model,
 		scode_predictor$modelC1, 
 		scode_predictor$modelCgp1, 
 		scode_predictor$modelC5, 
+		scode_model_loop, 
 		"  // priors including all constants \n", 
 		scode_prior, 
 		"  // likelihood including all constants \n", 
 		"  if (!prior_only) { \n", 
-		scode_model_loop, 
 		scode_llh,
 		"  } \n", 
 		"} \n"
