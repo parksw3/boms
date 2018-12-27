@@ -51,7 +51,7 @@ make_stancode_boms <- function(model,
 	
 	scode_ranef <- brms:::stan_re(ranef, prior = prior, cov_ranef = NULL)
 
-	scode_llh <- brms:::stan_llh(bterms, data = data)
+	scode_llh <- brms:::stan_llh(bterms, data = bdata)
 	scode_global_defs <- brms:::stan_global_defs(bterms, prior = prior, 
 										  ranef = ranef, cov_ranef = NULL)
 	scode_Xme <- brms:::stan_Xme(meef, prior = prior)

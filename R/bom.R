@@ -1,6 +1,7 @@
 ##' Fit Bayesian Ordinary Differential Equations (ODE) Multilevel Models
 ##' @import rstan
-##' @importFrom rstan stan_model
+##' @importFrom rstan stan_model sampling
+##' @export
 bom <- function(model, 
 				effect=NULL,
 				prior,

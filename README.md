@@ -1,2 +1,2 @@
-# fitode2
-fitode implemented in stan? temporary repo for now ...
+# BOMS
+Bayesian ODE models using 'Stan'
