@@ -21,7 +21,6 @@ make_stancode_boms <- function(model,
 	## TODO: fix this
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
 	
-	linklist <- attr(model$link, "linklist")
 	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
 	
 	bf_arg <- c(oformula, effect, nl=TRUE)
@@ -36,7 +35,7 @@ make_stancode_boms <- function(model,
 		do.call(brms::prior, arg)
 	}))
 	
-	## TODO allow for other options in sample_prior
+	## TODO check for other options in sample_prior
 	sample_prior <- match.arg(sample_prior)
 	prior <- check_prior(bprior, formula = formula, data = bdata, 
 						 sample_prior = sample_prior, warn = TRUE)

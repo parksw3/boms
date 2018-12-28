@@ -32,9 +32,11 @@ bom <- function(model,
 	
 	bdata$t <- bdata[[tcol]]
 	bdata <- bdata[order(bdata$t),]
+	dt <- diff(bdata$t)
+	## temporary
+	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
 	
-	if (missing(family))
-		family <- model$family
+	if (missing(family)) family <- model$family
 	
 	if (is.null(effect)) {
 		enames <- NULL
@@ -53,13 +55,15 @@ bom <- function(model,
 	stancode_boms <- make_stancode_boms(
 		model=model,
 		effect=effect,
-		prior=prior
+		prior=prior,
+		data=bdata
 	)
 	
 	standata_boms <- make_standata_boms(
 		model=model,
 		effect=effect,
-		prior=prior
+		prior=prior,
+		data=bdata
 	)
 
 	message("Compiling the C++ model")
@@ -74,6 +78,22 @@ bom <- function(model,
 			 cores=cores,
 			 ...)
 	
+	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
+	
+	bf_arg <- c(oformula, effect, nl=TRUE)
+	
+	formula <- do.call(bf, bf_arg)
+	formula$family <- model$family
+	
+	bterms <- parse_bf(formula)
+	
+	bdata <- brms:::update_data(bdata, bterms = bterms)
+	
+	allvars <- all.vars(bterms$allvars)
+	allvars <- allvars[!allvars %in% c(deparse(model$observation[[2]]), "t", "t0")]
+	
+	bdata <- arrange_t0(bdata, allvars)
+	
 	x <- list(
 		model=model,
 		effect=effect,
@@ -83,7 +103,14 @@ bom <- function(model,
 		fit=ss
 	)
 	
-	class(x) <- c("bom")
+	x$ranef <- brms:::tidy_ranef(bterms, data = bdata)
+	
+	## TODO: do I really need this?
+	x$exclude <- brms:::exclude_pars(
+		bterms, data = x$data, ranef = x$ranef
+	)
+	
+	class(x) <- c("bomsfit")
 	
 	x
 }

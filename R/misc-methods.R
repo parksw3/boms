@@ -1,8 +1,8 @@
 ##' @export
 print.bomsmodel <- function(x, ...) {
-	h <- paste0("d", x$state, "/dt = ", sapply(x$model, function(x) deparse(x[[3]])))
+	h <- paste0("d", x$state, "/dt = ", sapply(x$grad, function(x) deparse(x[[3]])))
 	cat("\nModel:\n")
-	for(i in 1:length(x$model)) 
+	for(i in 1:length(x$grad)) 
 		cat(h[i], "\n")
 	
 	cat("\nObservations:\n")
@@ -13,6 +13,16 @@ print.bomsmodel <- function(x, ...) {
 	for(i in 1:length(g))
 		cat(g[i], "\n")
 	
-	cat("\nFamily:", x$family)
+	cat("\nFamily:", x$family$family)
 	cat("\nParameters:", x$par)
+}
+
+print.bomssummary <- function(x, digit = 2, ...) {
+	cat(" Family: ")
+	cat(summarise_families(x$formula), "\n")
+	cat("  Links: ")
+	cat(summarise_links(x$formula, wsp = 9), "\n")
+	cat("Formula: ")
+	
+	invisible(x)
 }

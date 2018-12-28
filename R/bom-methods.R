@@ -1,14 +1,24 @@
 ##' @export
-print.bom <- function(x, digits=2, ...) {
-	print(summary(bom, ...), digits=digits, ...)
+print.bomsfit <- function(x, digits=2, ...) {
+	print(summary(x, ...), digits=digits, ...)
 }
 
 ##' @importMethodsFrom rstan summary
 ##' @export
-summary.bom <- function(object, priors = FALSE, prob = 0.95,
-						mc_se = FALSE, use_cache = TRUE, ...) {
+summary.bomsfit <- function(object, priors = FALSE, prob = 0.95,
+							mc_se = FALSE, use_cache = TRUE, ...) {
 	model <- object$model
 	effect <- object$effect
+	
+	out <- list(
+		group=unique(object$ranef$group), 
+		nobs=nrow(object$data),
+		family=object$model$family,
+		model=model,
+		effect=effect
+	)
+	
+	class(out) <- "bomssummary"
 	
 	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
 	
@@ -19,13 +29,13 @@ summary.bom <- function(object, priors = FALSE, prob = 0.95,
 	
 	bterms <- parse_bf(formula)
 	
-	pars <- parnames(object)
+	pars <- dimnames(object$fit)$parameters
 	
 	meta_pars <- object$fit@sim$pars_oi
-	meta_pars <- meta_pars[!grepl("^(r|s|zgp|Xme|prior|lp|temp)_", meta_pars)]
+	meta_pars <- meta_pars[!grepl("^(r|s|zgp|Xme|prior|lp)_", meta_pars)]
 	probs <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
 	
-	fit_summary <- summary(
+	fit_summary <- rstan::summary(
 		object$fit, pars=meta_pars,
 		probs=probs, use_cache=use_cache
 	)
@@ -41,16 +51,17 @@ summary.bom <- function(object, priors = FALSE, prob = 0.95,
 	
 	## TODO: change scale to response
 	
-	fe_pars <- pars[grepl(fixef_pars(), pars)]
+	fe_pars <- pars[grepl("^b(()|(s)|(cs)|(sp)|(mo)|(me)|(mi)|(m))_", pars)]
 	out$fixed <- fit_summary[fe_pars, , drop = FALSE]
-	rownames(out$fixed) <- gsub(fixef_pars(), "", fe_pars)
+	rownames(out$fixed) <- gsub("^b(()|(s)|(cs)|(sp)|(mo)|(me)|(mi)|(m))_", "", fe_pars)
 	
+	## TODO ??
 	# summary of family specific parameters
-	spec_pars <- c(valid_dpars(object), "delta")
-	spec_pars <- paste0(spec_pars, collapse = "|")
-	spec_pars <- paste0("^(", spec_pars, ")($|_)")
-	spec_pars <- pars[grepl(spec_pars, pars)]
-	out$spec_pars <- fit_summary[spec_pars, , drop = FALSE]
+	# spec_pars <- c(valid_dpars(object), "delta")
+	# spec_pars <- paste0(spec_pars, collapse = "|")
+	# spec_pars <- paste0("^(", spec_pars, ")($|_)")
+	# spec_pars <- pars[grepl(spec_pars, pars)]
+	# out$spec_pars <- fit_summary[spec_pars, , drop = FALSE]
 	
 	# summary of residual correlations
 	rescor_pars <- pars[grepl("^rescor_", pars)]
@@ -61,13 +72,13 @@ summary.bom <- function(object, priors = FALSE, prob = 0.95,
 	}
 	
 	# summary of autocorrelation effects
-	cor_pars <- pars[grepl(regex_cor_pars(), pars)]
-	out$cor_pars <- fit_summary[cor_pars, , drop = FALSE]
-	rownames(out$cor_pars) <- cor_pars
+	# cor_pars <- pars[grepl(regex_cor_pars(), pars)]
+	# out$cor_pars <- fit_summary[cor_pars, , drop = FALSE]
+	# rownames(out$cor_pars) <- cor_pars
 	
 	# summary of group-level effects
 	for (g in out$group) {
-		gregex <- escape_dot(g)
+		gregex <- gsub(".", "\\.", g, fixed = TRUE)
 		sd_prefix <- paste0("^sd_", gregex, "__")
 		sd_pars <- pars[grepl(sd_prefix, pars)]
 		cor_prefix <- paste0("^cor_", gregex, "__")
@@ -76,7 +87,7 @@ summary.bom <- function(object, priors = FALSE, prob = 0.95,
 		df_pars <- pars[grepl(df_prefix, pars)]
 		gpars <- c(df_pars, sd_pars, cor_pars)
 		out$random[[g]] <- fit_summary[gpars, , drop = FALSE]
-		if (has_rows(out$random[[g]])) {
+		if (isTRUE(nrow(out$random[[g]]) > 0L)) {
 			sd_names <- sub(sd_prefix, "sd(", sd_pars)
 			cor_names <- sub(cor_prefix, "cor(", cor_pars)
 			cor_names <- sub("__", ",", cor_names)
@@ -85,28 +96,6 @@ summary.bom <- function(object, priors = FALSE, prob = 0.95,
 			rownames(out$random[[g]]) <- gnames
 		}
 	}
-	# summary of smooths
-	sm_pars <- pars[grepl("^sds_", pars)]
-	if (length(sm_pars)) {
-		out$splines <- fit_summary[sm_pars, , drop = FALSE]
-		rownames(out$splines) <- paste0(gsub("^sds_", "sds(", sm_pars), ")")
-	}
-	# summary of monotonic parameters
-	mo_pars <- pars[grepl("^simo_", pars)]
-	if (length(mo_pars)) {
-		out$mo <- fit_summary[mo_pars, , drop = FALSE]
-		rownames(out$mo) <- gsub("^simo_", "", mo_pars)
-	}
-	# summary of gaussian processes
-	gp_pars <- pars[grepl("^(sdgp|lscale)_", pars)]
-	if (length(gp_pars)) {
-		out$gp <- fit_summary[gp_pars, , drop = FALSE]
-		rownames(out$gp) <- gsub("^sdgp_", "sdgp(", rownames(out$gp))
-		rownames(out$gp) <- gsub("^lscale_", "lscale(", rownames(out$gp))
-		rownames(out$gp) <- paste0(rownames(out$gp), ")")
-	}
-	out
 	
+	out
 }
-
-

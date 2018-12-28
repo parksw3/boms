@@ -179,7 +179,7 @@ make_model <- function(grad,
 		tcol=tcol
 	)
 	
-	class(mm) <- c("list", "bomsmodel")
+	class(mm) <- c("bomsmodel")
 	
 	mm
 }

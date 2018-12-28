@@ -1,3 +1,70 @@
+##' @export
+make_standata_boms <- function(model,
+							   effect,
+							   prior,
+							   data,
+							   sample_prior = c("no", "yes", "only"),
+							   ...) {
+	tcol <- model$tcol
+	
+	if (missing(data)) {
+		bdata <- model$data
+	} else {
+		bdata <- data
+	}
+	
+	bdata$t <- bdata[[tcol]]
+	bdata <- bdata[order(bdata$t),]
+	dt <- diff(bdata$t)
+	## temporary
+	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
+	
+	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
+	
+	bf_arg <- c(oformula, effect, nl=TRUE)
+	
+	formula <- do.call(bf, bf_arg)
+	formula$family <- model$family
+	
+	bterms <- parse_bf(formula)
+
+	bprior <- do.call(c, lapply(prior, function(x) {
+		arg <- c(x[[3]], nlpar=as.character(x[[2]]), lb=0)
+		do.call(brms::prior, arg)
+	}))
+	
+	sample_prior <- match.arg(sample_prior)
+	prior <- check_prior(bprior, formula = formula, data = bdata, 
+						 sample_prior = sample_prior, warn = TRUE)
+	
+	bdata <- brms:::update_data(bdata, bterms = bterms)
+	
+	allvars <- all.vars(bterms$allvars)
+	allvars <- allvars[!allvars %in% c(deparse(model$observation[[2]]), "t", "t0")]
+	
+	bdata <- arrange_t0(bdata, allvars)
+	
+	out <- c(
+		list(N = nrow(bdata)), 
+		data_response(
+			bterms, bdata
+		)
+	)
+	
+	ranef <- brms:::tidy_ranef(bterms, data = bdata)
+	meef <- brms:::tidy_meef(bterms, data = bdata)
+	
+	out <- c(out, data_predictor(
+		bterms, data = bdata, prior = prior, ranef = ranef, meef = meef
+	))
+	
+	out$which_t0 <- bdata$which_t0
+	
+	out$prior_only <- as.integer(identical(sample_prior, "only"))
+	
+	structure(out, class = "standata")
+}
+
 arrange_t0_internal <- function(x) {
 	x <- x[order(x$t),]
 	tmp <- rep(NA, nrow(x))
@@ -38,72 +105,4 @@ arrange_t0 <- function(data, allvars=NULL) {
 	rownames(data) <- NULL
 	
 	data
-}
-
-##' @export
-make_standata_boms <- function(model,
-							   effect,
-							   prior,
-							   data,
-							   sample_prior = c("no", "yes", "only"),
-							   ...) {
-	tcol <- model$tcol
-	
-	if (missing(data)) {
-		bdata <- model$data
-	} else {
-		bdata <- data
-	}
-	
-	bdata$t <- bdata[[tcol]]
-	bdata <- bdata[order(bdata$t),]
-	dt <- diff(bdata$t)
-	## temporary
-	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
-	
-	linklist <- attr(model$link, "linklist")
-	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
-	
-	bf_arg <- c(oformula, effect, nl=TRUE)
-	
-	formula <- do.call(bf, bf_arg)
-	formula$family <- model$family
-	
-	bterms <- parse_bf(formula)
-
-	bprior <- do.call(c, lapply(prior, function(x) {
-		arg <- c(x[[3]], nlpar=as.character(x[[2]]), lb=0)
-		do.call(brms::prior, arg)
-	}))
-	
-	sample_prior <- match.arg(sample_prior)
-	prior <- brms:::check_prior(bprior, formula = formula, data = bdata, 
-								sample_prior = sample_prior, warn = TRUE)
-	
-	bdata <- brms:::update_data(bdata, bterms = bterms)
-	
-	allvars <- all.vars(bterms$allvars)
-	allvars <- allvars[!allvars %in% c(deparse(model$observation[[2]]), "t", "t0")]
-	
-	bdata <- arrange_t0(bdata, allvars)
-	
-	out <- c(
-		list(N = nrow(bdata)), 
-		data_response(
-			bterms, bdata
-		)
-	)
-	
-	ranef <- brms:::tidy_ranef(bterms, data = bdata)
-	meef <- brms:::tidy_meef(bterms, data = bdata)
-	
-	out <- c(out, data_predictor(
-		bterms, data = bdata, prior = prior, ranef = ranef, meef = meef
-	))
-	
-	out$which_t0 <- bdata$which_t0
-	
-	out$prior_only <- as.integer(identical(sample_prior, "only"))
-	
-	structure(out, class = "standata")
 }
