@@ -163,6 +163,9 @@ make_model <- function(grad,
 		"  }\n\n",
 		"  real mufun(", farg, ", real[] y_hat){\n",
 		"    return (", deparse(oo), ");\n",
+		"  }\n\n",
+		"  real tmpfun(", farg, ", real mu_hat) { \n",
+		"    return mu_hat;\n",
 		"  }"
 	)
 	

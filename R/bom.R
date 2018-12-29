@@ -44,7 +44,7 @@ bom <- function(model,
 		enames <- lapply(effect, function(x) as.character(x[[2]]))
 	}
 	
-	estpar <- c(model$par[is.na(match(model$par, colnames(bdata)))], family$dpars[2])
+	estpar <- c(model$par[is.na(match(model$par, colnames(bdata)))], family$dpars[-1])
 	
 	effect0 <- sapply(paste0(estpar[!estpar %in% enames], " ~ 1"), as.formula)
 	names(effect0) <- NULL
@@ -109,6 +109,9 @@ bom <- function(model,
 	x$exclude <- brms:::exclude_pars(
 		bterms, data = x$data, ranef = x$ranef
 	)
+	
+	x$model.name <- substr(collapse(deparse(substitute(model))), 1, 50)
+	x$data.name <- substr(collapse(deparse(substitute(data))), 1, 50)
 	
 	class(x) <- c("bomsfit")
 	

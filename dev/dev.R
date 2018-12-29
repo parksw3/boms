@@ -27,3 +27,14 @@ oo <- bom(
 		i0 ~ beta(1, 100)
 	)
 )
+
+brms:::extract_draws.btl
+
+brms:::extract_draws.brmsterms
+
+brms:::prepare_family
+
+brms:::predict.brmsfit
+
+brms:::predict_internal.brmsdraws
+

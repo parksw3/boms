@@ -90,13 +90,6 @@ make_stancode_boms <- function(model,
 		"} \n"
 	)
 	
-	scode_transformed_parameters <- paste0(
-		"transformed parameters { \n", 
-		scode_predictor$tparD, scode_ranef$tparD, scode_Xme$tparD, 
-		scode_ranef$tparC1, 
-		"} \n"
-	)
-	
 	estpar <- model$par[is.na(match(model$par, colnames(bdata)))]
 	link <- model$link
 	
@@ -156,6 +149,13 @@ make_stancode_boms <- function(model,
 		paste(prior_deriv, collapse = ""),
 		scode_ranef$prior, 
 		scode_Xme$prior, brms:::stan_prior(class = "", prior = prior))
+	
+	scode_transformed_parameters <- paste0(
+		"transformed parameters { \n", 
+		scode_predictor$tparD, scode_ranef$tparD, scode_Xme$tparD, 
+		scode_ranef$tparC1, 
+		"} \n"
+	)
 	
 	scode_model <- paste0(
 		"model { \n", 

@@ -1,7 +1,7 @@
 ## using unexported functions from brms 2.7.0
 ## copied from 
 ## https://github.com/paul-buerkner/brms/tree/56dd64f08295ced87167fad79a9ef502199775c3
-## slightly modified to skip unnecessary steps
+## slightly modified to skip some steps
 
 rename <- function(x, pattern = NULL, replacement = NULL, 
 				   fixed = TRUE, check_dup = FALSE, ...) {
@@ -176,4 +176,9 @@ update_data <- function(data, bterms, na.action = na.omit2,
 	attr(data, "knots") <- knots
 	attr(data, "brmsframe") <- TRUE
 	data
+}
+
+collapse <- function(..., sep = "") {
+	# wrapper for paste with collapse = ""
+	paste(..., sep = sep, collapse = "")
 }
