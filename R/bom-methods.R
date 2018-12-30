@@ -1,3 +1,4 @@
+##' @method print bomsfit
 ##' @export
 print.bomsfit <- function(x, digits=2, ...) {
 	print(summary(x, ...), digits=digits, ...)
@@ -26,6 +27,7 @@ summary.bomsfit <- function(object, priors = FALSE, prob = 0.95,
 	out$thin <- object$fit@sim$thin
 	stan_args <- object$fit@stan_args[[1]]
 	out$sampler <- paste0(stan_args$method, "(", stan_args$algorithm, ")")
+	out$prior <- object$prior
 	
 	class(out) <- "bomssummary"
 	
@@ -121,6 +123,85 @@ summary.bomsfit <- function(object, priors = FALSE, prob = 0.95,
 			gnames <- c(df_names, paste0(c(sd_names, cor_names), ")"))
 			rownames(out$random[[g]]) <- gnames
 		}
+	}
+	
+	out
+}
+
+##' @import ggplot2
+##' @importFrom ggplot2 ggplot geom_point geom_line
+##' @export
+plot.bomsfit <- function(x,
+						 prob=0.95,
+						 newdata,
+						 ...) {
+	pred <- predict(x, prob=prob, newdata=newdata, summarize=TRUE)
+	
+	if (missing(newdata)) {
+		bdata <- x$data
+	} else {
+		bdata <- newdata
+		
+		tcol <- x$model$tcol
+		
+		bdata$t <- bdata[[tcol]]
+		bdata <- bdata[order(bdata$t),]
+		dt <- diff(bdata$t)
+		## temporary
+		bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
+		
+		bdata <- arrange_t0(bdata, allvars=x$allvars)
+	}
+	
+	bdata$Y <- bdata[[deparse(x$model$observation[[2]])]]
+	
+	pdata <- cbind(bdata, pred)
+	
+	if (prob < 0.5) prob <- 1 - prob
+	CIs <- paste0(c("l-", "u-"), prob * 100, "% CI")
+	
+	names(pdata)[match(CIs, names(pdata))] <- c("lwr", "upr")
+	
+	## TODO: a lot of work to do here...
+	g <- ggplot(pdata) +
+		geom_line(aes(t, mean)) +
+		geom_ribbon(aes(t, ymin=lwr, ymax=upr), alpha=0.2) +
+		geom_point(aes(t, Y))
+	
+	print(g)
+	
+	invisible(g)
+}
+
+##' @importFrom rstan extract
+##' @export
+predict.bomsfit <- function(x,
+							prob=0.95,
+							newdata,
+							summarize=TRUE,
+							...) {
+	if (prob < 0.5) prob <- 1 - prob
+	probs <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
+	
+	if (missing(newdata)) {
+		fit <- x$fit
+		ee <- rstan::extract(fit)
+		out <- ee$mu
+	} else {
+		out <- predict_internal(x, newdata)
+		dimnames(out) <- alist(iterations=NULL, NULL)
+	}
+	
+	if (summarize) {
+		out <- data.frame(
+			mean=colMeans(out),
+			lwr=apply(out, 2, quantile, probs[1]),
+			upr=apply(out, 2, quantile, probs[2])
+		)
+		
+		CIs <- paste0(c("l-", "u-"), prob * 100, "% CI")
+		
+		colnames(out) <- c("mean", CIs)
 	}
 	
 	out

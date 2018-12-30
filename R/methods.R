@@ -1,3 +1,5 @@
+##' @method print bomsmodel
+##' @export print
 ##' @export
 print.bomsmodel <- function(x, ...) {
 	h <- paste0("d", x$state, "/dt = ", sapply(x$grad, function(x) deparse(x[[3]])))
@@ -17,7 +19,9 @@ print.bomsmodel <- function(x, ...) {
 	cat("\nParameters:", x$par)
 }
 
-print.bomssummary <- function(x, digit = 2, ...) {
+##' @method print bomssummary
+##' @export
+print.bomssummary <- function(x, digits = 2, ...) {
 	cat(paste0(
 		"  Model: ", x$model.name,
 		" (Observation: ", deparse(x$model$observation), ") \n"
@@ -40,17 +44,26 @@ print.bomssummary <- function(x, digit = 2, ...) {
 		"         total post-warmup samples = ", final_samples, "\n\n"
 	))
 	
-	if (nrow(x$prior)) {
-		cat("Priors: \n")
-		print(x$prior, show_df = FALSE)
+	if (length(x$prior)) {
+		cat(" Priors: \n")
+		nchar_before <- sapply(x$prior, function(x) {
+			y <- deparse(x)
+			nchar(gsub("~.*", "", y))
+		})
+		
+		nspace <- ceiling(max(nchar_before)/2+1)*2-nchar_before
+		space <- sapply(sapply(nspace, rep, x=" "), paste, collapse="")
+		sapply(paste0(space, sapply(x$prior, deparse)), function(x) cat(paste0(x, "\n")))
+		
 		cat("\n")
 	}
 	
-	if (nrow(x$cor_pars)) {
+	if (length(x$cor_pars)) {
 		cat("Correlation Structures:\n")
 		print_format(x$cor_pars, digits)
 		cat("\n")
 	}
+	
 	if (length(x$random)) {
 		cat("Group-Level Effects: \n")
 		for (i in seq_along(x$random)) {
@@ -60,6 +73,7 @@ print.bomssummary <- function(x, digit = 2, ...) {
 			cat("\n")
 		}
 	}
+	
 	if (nrow(x$fixed)) {
 		cat("Population-Level Effects: \n")
 		print_format(x$fixed, digits)
@@ -71,23 +85,22 @@ print.bomssummary <- function(x, digit = 2, ...) {
 		print_format(x$spec_pars, digits)
 		cat("\n")
 	}
+	
 	if (length(x$rescor_pars)) {
 		cat("Residual Correlations: \n")
 		print_format(x$rescor, digits)
 		cat("\n")
 	}
+	
 	cat(paste0("Samples were drawn using ", x$sampler, ". "))
-	if (x$algorithm == "sampling") {
-		cat(paste0(
-			"For each parameter, Eff.Sample \n",
-			"is a crude measure of effective sample size, ", 
-			"and Rhat is the potential \n",
-			"scale reduction factor on split chains ",
-			"(at convergence, Rhat = 1)."
-		))
-	}
+	cat(paste0(
+		"For each parameter, Eff.Sample \n",
+		"is a crude measure of effective sample size, ", 
+		"and Rhat is the potential \n",
+		"scale reduction factor on split chains ",
+		"(at convergence, Rhat = 1)."
+	))
 	cat("\n")
 	
 	invisible(x)
 }
-

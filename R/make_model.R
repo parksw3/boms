@@ -73,6 +73,8 @@ make_model <- function(grad,
 	
 	solver <- match.arg(solver)
 	
+	data.name <- substr(collapse(deparse(substitute(data))), 1, 50)
+	
 	if (is.character(family)) {
 		family <- do.call(brmsfamily, list(family=family, link="identity"))
 	} else if ("brmsfamily" %in% class(family)) {
@@ -179,6 +181,7 @@ make_model <- function(grad,
 		family=family,
 		link=link,
 		data=data,
+		data.name=data.name,
 		tcol=tcol
 	)
 	

@@ -154,11 +154,6 @@ make_stancode_boms <- function(model,
 		"transformed parameters { \n", 
 		scode_predictor$tparD, scode_ranef$tparD, scode_Xme$tparD, 
 		scode_ranef$tparC1, 
-		"} \n"
-	)
-	
-	scode_model <- paste0(
-		"model { \n", 
 		"  real y_hat[N,", length(model$state), "];\n",
 		"  real y0[N,", length(model$state), "];\n",
 		scode_predictor$modelD, 
@@ -166,6 +161,11 @@ make_stancode_boms <- function(model,
 		scode_predictor$modelCgp1, 
 		scode_predictor$modelC5, 
 		scode_model_loop, 
+		"} \n"
+	)
+	
+	scode_model <- paste0(
+		"model { \n", 
 		"  // priors including all constants \n", 
 		scode_prior, 
 		"  // likelihood including all constants \n", 

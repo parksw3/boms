@@ -182,3 +182,32 @@ collapse <- function(..., sep = "") {
 	# wrapper for paste with collapse = ""
 	paste(..., sep = sep, collapse = "")
 }
+
+print_format <- function(x, digits = 2, no_digits = "Eff.Sample") {
+	# helper function to print summary matrices
+	# in nice format, also showing -0.00 (#263)
+	# Args:
+	#   x: object to be printed; coerced to matrix
+	#   digits: number of digits to show
+	#   no_digits: names of columns for which no digits should be shown
+	x <- as.matrix(x)
+	digits <- as.numeric(digits)
+	if (length(digits) != 1L) {
+		stop2("'digits' should be a single numeric value.")
+	}
+	out <- x
+	fmt <- paste0("%.", digits, "f")
+	for (i in seq_cols(x)) {
+		if (isTRUE(colnames(x)[i] %in% no_digits)) {
+			out[, i] <- sprintf("%.0f", x[, i])
+		} else {
+			out[, i] <- sprintf(fmt, x[, i])
+		}
+	}
+	print(out, quote = FALSE, right = TRUE)
+	invisible(x)
+}
+
+seq_cols <- function(x) {
+	seq_len(NCOL(x))
+}

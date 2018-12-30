@@ -22,13 +22,15 @@ bom <- function(model,
 				# save_model = NULL, stan_model_args = list(),
 				# save_dso = TRUE, file = NULL, 
 				...) {
-	tcol <- model$tcol
-	
 	if (missing(data)) {
 		bdata <- model$data
+		data.name <- model$data.name
 	} else {
 		bdata <- data
+		data.name <- substr(collapse(deparse(substitute(data))), 1, 50)
 	}
+	
+	tcol <- model$tcol
 	
 	bdata$t <- bdata[[tcol]]
 	bdata <- bdata[order(bdata$t),]
@@ -100,7 +102,9 @@ bom <- function(model,
 		code=stancode_boms,
 		data=bdata,
 		standata=standata_boms,
-		fit=ss
+		fit=ss,
+		prior=prior,
+		allvars=allvars
 	)
 	
 	x$ranef <- brms:::tidy_ranef(bterms, data = bdata)
@@ -111,7 +115,7 @@ bom <- function(model,
 	)
 	
 	x$model.name <- substr(collapse(deparse(substitute(model))), 1, 50)
-	x$data.name <- substr(collapse(deparse(substitute(data))), 1, 50)
+	x$data.name <- data.name
 	
 	class(x) <- c("bomsfit")
 	
