@@ -6,6 +6,7 @@ make_stancode_boms <- function(model,
 							   prior,
 							   data,
 							   sample_prior = c("no", "yes", "only"),
+							   family,
 							   ...) {
 	tcol <- model$tcol
 	
@@ -15,8 +16,25 @@ make_stancode_boms <- function(model,
 		bdata <- data
 	}
 	
+	if (missing(family)) family <- model$family
+	
+	if (is.null(effect)) {
+		enames <- NULL
+	} else {
+		enames <- lapply(effect, function(x) as.character(x[[2]]))
+	}
+	
+	estpar <- c(model$par[is.na(match(model$par, colnames(bdata)))], family$dpars[-1])
+	
+	if (sum(!estpar %in% enames) > 0) {
+		effect0 <- sapply(paste0(estpar[!estpar %in% enames], " ~ 1"), as.formula)
+		names(effect0) <- NULL
+		
+		effect <- c(effect, effect0)
+		effect <- effect[match(estpar, sapply(effect, function(x) as.character(x[[2]])))]
+	}
+	
 	bdata$t <- bdata[[tcol]]
-	bdata <- bdata[order(bdata$t),]
 	dt <- diff(bdata$t)
 	## TODO: fix this
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
@@ -26,7 +44,7 @@ make_stancode_boms <- function(model,
 	bf_arg <- c(oformula, effect, nl=TRUE)
 	
 	formula <- do.call(bf, bf_arg)
-	formula$family <- model$family
+	formula$family <- family
 	
 	bterms <- parse_bf(formula)
 
@@ -140,13 +158,17 @@ make_stancode_boms <- function(model,
 			prior_deriv[i] <- paste0("  target += ", dpp, ";\n")
 			
 			if (link[j] == "logit")
-				prior_deriv[i] <- gsub(")", "|0, 1)", prior_deriv[i]) ## TODO
+				prior_deriv[i] <- gsub(")", "|0, 1)", prior_deriv[i]) ## TODO ??
+		} else {
+			prior_deriv[i] <- "  target += 0;\n"
 		}
 	}
 	
+	prior_deriv_code <- paste(prior_deriv, collapse = "")
+	
 	scode_prior <- paste0(
 		prior0, 
-		paste(prior_deriv, collapse = ""),
+		prior_deriv_code,
 		scode_ranef$prior, 
 		scode_Xme$prior, brms:::stan_prior(class = "", prior = prior))
 	

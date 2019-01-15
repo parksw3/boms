@@ -33,7 +33,6 @@ bom <- function(model,
 	tcol <- model$tcol
 	
 	bdata$t <- bdata[[tcol]]
-	bdata <- bdata[order(bdata$t),]
 	dt <- diff(bdata$t)
 	## temporary
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
@@ -48,11 +47,13 @@ bom <- function(model,
 	
 	estpar <- c(model$par[is.na(match(model$par, colnames(bdata)))], family$dpars[-1])
 	
-	effect0 <- sapply(paste0(estpar[!estpar %in% enames], " ~ 1"), as.formula)
-	names(effect0) <- NULL
-	
-	effect <- c(effect, effect0)
-	effect <- effect[match(estpar, sapply(effect, function(x) as.character(x[[2]])))]
+	if (sum(!estpar %in% enames) > 0) {
+		effect0 <- sapply(paste0(estpar[!estpar %in% enames], " ~ 1"), as.formula)
+		names(effect0) <- NULL
+		
+		effect <- c(effect, effect0)
+		effect <- effect[match(estpar, sapply(effect, function(x) as.character(x[[2]])))]
+	}
 	
 	stancode_boms <- make_stancode_boms(
 		model=model,

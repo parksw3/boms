@@ -4,6 +4,7 @@ make_standata_boms <- function(model,
 							   prior,
 							   data,
 							   sample_prior = c("no", "yes", "only"),
+							   family,
 							   ...) {
 	tcol <- model$tcol
 	
@@ -13,8 +14,25 @@ make_standata_boms <- function(model,
 		bdata <- data
 	}
 	
+	if (missing(family)) family <- model$family
+	
+	if (is.null(effect)) {
+		enames <- NULL
+	} else {
+		enames <- lapply(effect, function(x) as.character(x[[2]]))
+	}
+	
+	estpar <- c(model$par[is.na(match(model$par, colnames(bdata)))], family$dpars[-1])
+	
+	if (sum(!estpar %in% enames) > 0) {
+		effect0 <- sapply(paste0(estpar[!estpar %in% enames], " ~ 1"), as.formula)
+		names(effect0) <- NULL
+		
+		effect <- c(effect, effect0)
+		effect <- effect[match(estpar, sapply(effect, function(x) as.character(x[[2]])))]
+	}
+	
 	bdata$t <- bdata[[tcol]]
-	bdata <- bdata[order(bdata$t),]
 	dt <- diff(bdata$t)
 	## temporary
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
@@ -24,7 +42,7 @@ make_standata_boms <- function(model,
 	bf_arg <- c(oformula, effect, nl=TRUE)
 	
 	formula <- do.call(bf, bf_arg)
-	formula$family <- model$family
+	formula$family <- family
 	
 	bterms <- parse_bf(formula)
 
@@ -66,7 +84,7 @@ make_standata_boms <- function(model,
 }
 
 arrange_t0_internal <- function(x) {
-	x <- x[order(x$t),]
+	# x <- x[order(x$t),]
 	tmp <- rep(NA, nrow(x))
 	for (i in 1:nrow(x)) {
 		if (x$t[i] == min(x$t)) {
@@ -82,13 +100,18 @@ arrange_t0_internal <- function(x) {
 }
 
 arrange_t0 <- function(data, allvars=NULL) {
-	data$order <- 1:nrow(data)
 	if (length(data$t0) == 0) {
 		dt <- diff(data$t)
 		data$t0 <- min(data$t) - min(dt[dt > 0])
 	}
 	
 	if (length(allvars) > 0) {
+		data <- do.call("rbind", lapply(split(data, data[allvars]), function(x){
+			x[order(x$t),]
+		}))
+		
+		data$order <- 1:nrow(data)
+		
 		data <- do.call("rbind", lapply(split(data, data[allvars]), function(x){
 			if (nrow(x) == 1) {
 				x$which_t0 <- x$order
@@ -98,9 +121,11 @@ arrange_t0 <- function(data, allvars=NULL) {
 			x
 		}))
 	} else {
+		data <- data[order(data$t),]
+		data$order <- 1:nrow(data)
 		data <- arrange_t0_internal(data)
 	}
-	
+	## probably unnecessary
 	data <- data[order(data$order),]
 	rownames(data) <- NULL
 	

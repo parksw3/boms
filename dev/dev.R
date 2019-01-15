@@ -22,19 +22,9 @@ oo <- bom(
 	model=SI_model,
 	prior=list(
 		beta ~ gamma(2, 1),
-		gamma ~ gamma(10, 10),
-		N ~ gamma(250, .01),
+		gamma ~ gamma(50, 50),
+		N ~ gamma(2, .001),
 		i0 ~ beta(1, 100)
-	)
+	),
+	seed=101
 )
-
-brms:::extract_draws.btl
-
-brms:::extract_draws.brmsterms
-
-brms:::prepare_family
-
-brms:::predict.brmsfit
-
-brms:::predict_internal.brmsdraws
-
