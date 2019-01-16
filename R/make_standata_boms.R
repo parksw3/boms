@@ -1,6 +1,6 @@
 ##' @export
 make_standata_boms <- function(model,
-							   effect,
+							   effect=NULL,
 							   prior,
 							   data,
 							   sample_prior = c("no", "yes", "only"),

@@ -2,7 +2,7 @@
 ##' @importFrom brms bf parse_bf prior
 ##' @export
 make_stancode_boms <- function(model,
-							   effect,
+							   effect=NULL,
 							   prior,
 							   data,
 							   sample_prior = c("no", "yes", "only"),
