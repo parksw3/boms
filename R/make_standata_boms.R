@@ -76,6 +76,10 @@ make_standata_boms <- function(model,
 		bterms, data = bdata, prior = prior, ranef = ranef, meef = meef
 	))
 	
+	out <- c(out, brms:::data_gr_global(ranef, cov_ranef = NULL))
+	meef <- brms:::tidy_meef(bterms, data)
+	out <- c(out, brms:::data_Xme(meef, data = data))
+	
 	out$which_t0 <- bdata$which_t0
 	
 	out$prior_only <- as.integer(identical(sample_prior, "only"))

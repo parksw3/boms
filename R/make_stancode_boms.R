@@ -39,6 +39,7 @@ make_stancode_boms <- function(model,
 	## TODO: fix this
 	bdata$t0 <- min(bdata$t) - min(dt[dt > 0])
 	
+	## hack
 	oformula <- as.formula(paste0(as.character(model$observation[[2]]), "~tmpfun(t, t0, ", paste(model$par, collapse=", "),  ")"))
 	
 	bf_arg <- c(oformula, effect, nl=TRUE)
@@ -92,8 +93,9 @@ make_stancode_boms <- function(model,
 	scode_transformed_data <- paste0(
 		"transformed data { \n", 
 		scode_global_defs$tdataD, scode_predictor$tdataD,
-		"    real x_r[0];\n",
-		"    int x_i[0];\n",
+		scode_predictor$tdataC,
+		"  real x_r[0];\n",
+		"  int x_i[0];\n",
 		"} \n"
 	)
 
