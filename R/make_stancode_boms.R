@@ -82,7 +82,6 @@ make_stancode_boms <- function(model,
 	)
 	
 	scode_data <- paste0(
-		"data { \n", "  int<lower=1> N;  // total number of observations \n", 
 		scode_predictor$data, scode_ranef$data, scode_Xme$data, 
 		"  int which_t0[N]; \n",
 		"  int prior_only;  // should the likelihood be ignored? \n", 
